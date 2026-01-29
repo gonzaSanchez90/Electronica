@@ -488,6 +488,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       const formData = new FormData();
       formData.append('file', file);
       formData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
+      formData.append('folder', 'invoices');
 
       const cloudRes = await fetch(`https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/auto/upload`, {
         method: 'POST',
@@ -585,6 +586,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     const formData = new FormData();
     formData.append('file', file);
     formData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
+
+    // Organizar en carpetas: shop/new o shop/repaired
+    const folder = newProduct.condition === 'new' ? 'shop/new' : 'shop/repaired';
+    formData.append('folder', folder);
 
     try {
       const response = await fetch(
