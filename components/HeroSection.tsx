@@ -9,7 +9,7 @@ interface HeroSectionProps {
 const HeroSection: React.FC<HeroSectionProps> = ({ config, navigate }) => {
   return (
     <div className="relative h-screen w-full overflow-hidden">
-      <div 
+      <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform duration-[20s] hover:scale-105"
         style={{ backgroundImage: `url('https://picsum.photos/id/201/1920/1080')` }}
       >
@@ -19,7 +19,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ config, navigate }) => {
         <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 tracking-tight animate-slide-up uppercase drop-shadow-lg">
           {config.heroTitle}
         </h1>
-        <p className="text-xl md:text-2xl text-gray-200 mb-10 max-w-2xl animate-fade-in delay-150 drop-shadow-md font-light">
+        <p className="text-xl md:text-2xl text-gray-200 mb-10 max-w-2xl animate-fade-in delay-150 font-light">
           {config.heroSubtitle}
         </p>
         <div className="flex flex-col sm:flex-row gap-4 animate-slide-up delay-300">
