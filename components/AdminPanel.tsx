@@ -561,7 +561,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       const publicId = `unasignedelectronicalyg/invoices/${timestamp}_${cleanFileName}`;
       formData.append('public_id', publicId);
 
-      const cloudRes = await fetch(`https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/auto/upload`, {
+      // Para PDFs necesitamos especificar resource_type como 'raw'
+      formData.append('resource_type', 'raw');
+
+      const cloudRes = await fetch(`https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/raw/upload`, {
         method: 'POST',
         body: formData,
       });
