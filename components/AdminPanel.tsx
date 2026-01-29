@@ -554,15 +554,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       formData.append('file', file);
       formData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
 
-      // Forzar la carpeta usando public_id (el preset lo ignora si usamos solo 'folder')
-      // Formato: unasignedelectronicalyg/invoices/timestamp_nombrearchivo
-      const timestamp = Date.now();
-      const cleanFileName = file.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9]/g, '_');
-      const publicId = `unasignedelectronicalyg/invoices/${timestamp}_${cleanFileName}`;
-      formData.append('public_id', publicId);
-
-      // Para PDFs necesitamos especificar resource_type como 'raw'
-      formData.append('resource_type', 'raw');
+      // Intentar con folder en lugar de public_id
+      formData.append('folder', 'unasignedelectronicalyg/invoices');
 
       const cloudRes = await fetch(`https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/raw/upload`, {
         method: 'POST',
