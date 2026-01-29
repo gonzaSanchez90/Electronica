@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { Page, Product, QuoteRequest, AdminView, SiteConfig, AnalyticsStats, VisitorLog } from '../types';
+import { Page, Product, QuoteRequest, AdminView, SiteConfig, AnalyticsStats, VisitorLog, Invoice } from '../types';
 import {
   User, LayoutDashboard, FileText, ShoppingBag, Settings, Activity as ActivityIcon, Clock,
-  BarChart3, Plus, Trash2, Upload, Search, CheckCircle, PenTool, Camera
+  BarChart3, Plus, Trash2, Upload, Search, CheckCircle, PenTool, Camera,
+  FileSpreadsheet, Receipt, Sparkles, Loader2, Calendar
 } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
+import { sendMessageToGemini } from '../services/geminiService';
 
 // --- STABLE SUB-COMPONENTS ---
 // These are defined outside to ensure they have a stable identity across AdminPanel re-renders,
@@ -238,7 +240,7 @@ const SettingsSection: React.FC<{
                 <input type="text" placeholder="Ej: Electrónica L & G" className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:border-blue-500 outline-none" value={siteConfig.heroTitle} onChange={e => setSiteConfig({ ...siteConfig, heroTitle: e.target.value })} />
               </div>
               <div>
-                <label className="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Pequeña Descripción (Hero)</label>
+                <label className="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Pequeña Descripción</label>
                 <textarea placeholder="Ej: Expertos en reparaciones y ventas..." className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:border-blue-500 outline-none h-32 resize-none" value={siteConfig.heroSubtitle} onChange={e => setSiteConfig({ ...siteConfig, heroSubtitle: e.target.value })} />
               </div>
             </div>
@@ -273,6 +275,99 @@ const SettingsSection: React.FC<{
   </div>
 );
 
+const BillingSection: React.FC<{
+  invoices: Invoice[];
+  handleInvoiceUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleDeleteInvoice: (id: string) => void;
+  isAnalyzing: boolean;
+}> = ({ invoices, handleInvoiceUpload, handleDeleteInvoice, isAnalyzing }) => {
+  const currentMonth = new Date().toLocaleString('es-ES', { month: 'long' });
+  const monthlyTotal = invoices.reduce((sum, inv) => sum + inv.amount, 0);
+
+  return (
+    <div className="space-y-6 pb-20">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-lg">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400"><Calendar size={20} /></div>
+            <span className="text-gray-400 text-sm font-bold uppercase">Mes Actual</span>
+          </div>
+          <div className="text-2xl font-bold text-white capitalize">{currentMonth}</div>
+        </div>
+        <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-lg">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-green-500/20 rounded-lg text-green-400"><Receipt size={20} /></div>
+            <span className="text-gray-400 text-sm font-bold uppercase">Total Facturado</span>
+          </div>
+          <div className="text-2xl font-bold text-white">${monthlyTotal.toLocaleString()}</div>
+        </div>
+        <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-lg flex flex-col justify-center">
+          <div className="relative group cursor-pointer overflow-hidden rounded-xl border-2 border-dashed border-slate-600 hover:border-blue-500 transition-all">
+            <input type="file" accept="image/*,application/pdf" onChange={handleInvoiceUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" disabled={isAnalyzing} />
+            <div className="py-4 flex items-center justify-center gap-3">
+              {isAnalyzing ? (
+                <>
+                  <Loader2 className="animate-spin text-blue-400" size={20} />
+                  <span className="text-sm font-bold text-blue-400">Analizando...</span>
+                </>
+              ) : (
+                <>
+                  <Upload className="text-gray-500 group-hover:text-blue-400" size={20} />
+                  <span className="text-sm font-bold text-gray-400 group-hover:text-white">Subir Factura</span>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-lg">
+        <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+          <FileSpreadsheet className="text-blue-400" size={24} /> Historial de Gastos
+        </h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-gray-300">
+            <thead className="text-xs uppercase bg-slate-900/50 text-gray-400">
+              <tr>
+                <th className="px-4 py-3">Archivo</th>
+                <th className="px-4 py-3">Fecha</th>
+                <th className="px-4 py-3">Importe</th>
+                <th className="px-4 py-3 text-right">Acción</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-700">
+              {invoices.map(inv => (
+                <tr key={inv.id} className="hover:bg-slate-700/30 transition-colors">
+                  <td className="px-4 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-slate-900 rounded text-gray-400"> {inv.fileType?.includes('pdf') ? 'PDF' : 'IMG'} </div>
+                      <div>
+                        <div className="font-bold text-white text-sm">{inv.name}</div>
+                        <a href={inv.url} target="_blank" rel="noreferrer" className="text-[10px] text-blue-400 hover:underline">Ver</a>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-4 text-sm">{inv.date}</td>
+                  <td className="px-4 py-4 font-bold text-green-400">${inv.amount.toLocaleString()}</td>
+                  <td className="px-4 py-4 text-right">
+                    <button onClick={() => handleDeleteInvoice(inv.id)} className="text-gray-500 hover:text-red-400"><Trash2 size={18} /></button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {invoices.length === 0 && (
+            <div className="text-center py-20">
+              <Sparkles className="mx-auto text-slate-700 mb-4" size={48} />
+              <p className="text-gray-500">Sube una factura y deja que la IA la analice por ti.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // --- MAIN COMPONENT ---
 
 interface AdminPanelProps {
@@ -282,6 +377,8 @@ interface AdminPanelProps {
   setQuotes: React.Dispatch<React.SetStateAction<QuoteRequest[]>>;
   siteConfig: SiteConfig;
   setSiteConfig: React.Dispatch<React.SetStateAction<SiteConfig>>;
+  invoices: Invoice[];
+  setInvoices: React.Dispatch<React.SetStateAction<Invoice[]>>;
   analytics: AnalyticsStats;
   visitorLogs: VisitorLog[];
   navigate: (page: Page) => void;
@@ -291,11 +388,12 @@ interface AdminPanelProps {
 
 const AdminPanel: React.FC<AdminPanelProps> = ({
   products, setProducts, quotes, setQuotes, siteConfig, setSiteConfig,
-  analytics, visitorLogs, navigate, isAuthenticated, setIsAuthenticated
+  invoices, setInvoices, analytics, visitorLogs, navigate, isAuthenticated, setIsAuthenticated
 }) => {
   const [currentAdminView, setCurrentAdminView] = useState<AdminView>(AdminView.DASHBOARD);
   const [adminPassword, setAdminPassword] = useState('');
   const [newProduct, setNewProduct] = useState<Partial<Product>>({ category: 'TV', condition: 'refurbished' });
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const handleAddProduct = async () => {
     if (!newProduct.name || !newProduct.price) return;
@@ -380,6 +478,85 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
+  const handleInvoiceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsAnalyzing(true);
+    try {
+      // 1. Upload to Cloudinary
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
+
+      const cloudRes = await fetch(`https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/auto/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+      const cloudData = await cloudRes.json();
+
+      if (!cloudData.secure_url) throw new Error("Cloudinary upload failed");
+
+      // 2. Analyze with Gemini IA
+      // For PDFs, we'll ask the user to provide the data or just use a generic prompt.
+      // Actually, let's try to pass the image if it's an image, or just the URL.
+      // For simplicity and because geminiService handles history/messages:
+      const prompt = `Analiza esta factura (URL: ${cloudData.secure_url}).
+      RESPONDE ÚNICAMENTE CON UN JSON EN ESTE FORMATO:
+      {"amount": 1234.56, "name": "Proveedor o Concepto"}.
+      Si no estás seguro del importe, intenta encontrar el TOTAL.`;
+
+      const aiResponse = await sendMessageToGemini([], prompt);
+      let extractedData = { amount: 0, name: file.name };
+
+      try {
+        const jsonMatch = aiResponse.match(/\{.*\}/);
+        if (jsonMatch) {
+          extractedData = JSON.parse(jsonMatch[0]);
+        }
+      } catch (e) {
+        console.warn("IA focus failure, using manual input fallback");
+      }
+
+      // 3. Save to Supabase
+      const { data: newInv, error } = await supabase.from('invoices').insert([{
+        name: extractedData.name || file.name,
+        url: cloudData.secure_url,
+        amount: extractedData.amount || 0,
+        file_type: file.type,
+      }]).select();
+
+      if (error) throw error;
+
+      if (newInv) {
+        setInvoices([{
+          id: newInv[0].id,
+          name: newInv[0].name,
+          url: newInv[0].url,
+          amount: newInv[0].amount,
+          date: new Date(newInv[0].created_at).toLocaleDateString(), // Assuming 'created_at' for date
+          fileType: newInv[0].file_type
+        }, ...invoices]);
+        alert(`Factura procesada: ${extractedData.name} - $${extractedData.amount}`);
+      }
+    } catch (error) {
+      console.error("Error procesando factura:", error);
+      alert("Error al procesar la factura. Verifica tu conexión y el archivo.");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleDeleteInvoice = async (id: string) => {
+    if (!window.confirm("¿Estás seguro de eliminar esta factura?")) return;
+    const { error } = await supabase.from('invoices').delete().eq('id', id);
+    if (!error) {
+      setInvoices(invoices.filter(i => i.id !== id));
+    } else {
+      alert("Error al eliminar factura.");
+    }
+  };
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -437,6 +614,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             <button onClick={() => setCurrentAdminView(AdminView.DASHBOARD)} className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg w-full transition-all ${currentAdminView === AdminView.DASHBOARD ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-gray-400 hover:bg-slate-700 hover:text-white'}`}><LayoutDashboard size={18} /> Dashboard</button>
             <button onClick={() => setCurrentAdminView(AdminView.QUOTES)} className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg w-full transition-all ${currentAdminView === AdminView.QUOTES ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-gray-400 hover:bg-slate-700 hover:text-white'}`}><FileText size={18} /> Presupuestos</button>
             <button onClick={() => setCurrentAdminView(AdminView.PRODUCTS)} className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg w-full transition-all ${currentAdminView === AdminView.PRODUCTS ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-gray-400 hover:bg-slate-700 hover:text-white'}`}><ShoppingBag size={18} /> Inventario</button>
+            <button onClick={() => setCurrentAdminView(AdminView.BILLING)} className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg w-full transition-all ${currentAdminView === AdminView.BILLING ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-gray-400 hover:bg-slate-700 hover:text-white'}`}><FileSpreadsheet size={18} /> Facturación</button>
             <button onClick={() => setCurrentAdminView(AdminView.CONTENT)} className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg w-full transition-all ${currentAdminView === AdminView.CONTENT ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-gray-400 hover:bg-slate-700 hover:text-white'}`}><Settings size={18} /> Configuración</button>
           </nav>
           <button onClick={() => setIsAuthenticated(false)} className="mt-auto text-red-400 hover:text-red-300 text-sm flex items-center gap-2 p-2 hover:bg-red-500/10 rounded-lg transition-colors">Cerrar Sesión</button>
@@ -449,6 +627,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             {currentAdminView === AdminView.DASHBOARD && 'Dashboard'}
             {currentAdminView === AdminView.PRODUCTS && 'Inventario'}
             {currentAdminView === AdminView.QUOTES && 'Presupuestos'}
+            {currentAdminView === AdminView.BILLING && 'Facturación y Gastos'}
             {currentAdminView === AdminView.CONTENT && 'Configuración'}
           </h2>
         </div>
@@ -457,6 +636,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           {currentAdminView === AdminView.DASHBOARD && <DashboardSection analytics={analytics} visitorLogs={visitorLogs} productsCount={products.length} />}
           {currentAdminView === AdminView.PRODUCTS && <InventorySection products={products} newProduct={newProduct} setNewProduct={setNewProduct} handleImageUpload={handleImageUpload} handleAddProduct={handleAddProduct} handleDeleteProduct={handleDeleteProduct} />}
           {currentAdminView === AdminView.QUOTES && <QuotesSection quotes={quotes} handleQuoteStatus={handleQuoteStatus} handleDeleteQuote={handleDeleteQuote} />}
+          {currentAdminView === AdminView.BILLING && <BillingSection invoices={invoices} handleInvoiceUpload={handleInvoiceUpload} handleDeleteInvoice={handleDeleteInvoice} isAnalyzing={isAnalyzing} />}
           {currentAdminView === AdminView.CONTENT && <SettingsSection siteConfig={siteConfig} setSiteConfig={setSiteConfig} handleUpdateConfig={handleUpdateConfig} />}
         </div>
       </div>

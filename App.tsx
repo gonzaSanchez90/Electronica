@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Page, Product, QuoteRequest, SiteConfig, AnalyticsStats, VisitorLog } from './types';
+import { Page, Product, QuoteRequest, SiteConfig, AnalyticsStats, VisitorLog, Invoice } from './types';
 import Chatbot from './components/Chatbot';
 import HeroSection from './components/HeroSection';
 import ShopPage from './components/ShopPage';
@@ -20,6 +20,7 @@ const App: React.FC = () => {
   const [siteConfig, setSiteConfig] = useState<SiteConfig>(INITIAL_CONFIG);
   const [analytics, setAnalytics] = useState<AnalyticsStats>(INITIAL_ANALYTICS);
   const [visitorLogs, setVisitorLogs] = useState<VisitorLog[]>(INITIAL_LOGS);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
 
   // Auth State - Set to FALSE for production so login is required
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -85,6 +86,19 @@ const App: React.FC = () => {
           issueDescription: q.issue_description,
           status: q.status,
           date: new Date(q.created_at).toLocaleDateString()
+        })));
+      }
+
+      // Fetch Invoices
+      const { data: iData } = await supabase.from('invoices').select('*');
+      if (iData) {
+        setInvoices(iData.map(i => ({
+          id: i.id,
+          name: i.name,
+          url: i.url,
+          amount: i.amount,
+          date: new Date(i.date).toLocaleDateString(),
+          fileType: i.file_type
         })));
       }
     };
@@ -154,6 +168,8 @@ const App: React.FC = () => {
             setQuotes={setQuotes}
             siteConfig={siteConfig}
             setSiteConfig={setSiteConfig}
+            invoices={invoices}
+            setInvoices={setInvoices}
             analytics={analytics}
             visitorLogs={visitorLogs}
             navigate={navigate}
