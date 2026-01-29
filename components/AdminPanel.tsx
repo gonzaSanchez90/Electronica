@@ -348,8 +348,10 @@ const BillingSection: React.FC<{
             </thead>
             <tbody className="divide-y divide-slate-700">
               {invoices.map(inv => {
-                // Link con fallback de descarga si Ver falla
-                const downloadUrl = inv.url.replace('/upload/', '/upload/fl_attachment/');
+                // Generamos un link que fuerce la descarga correctamente
+                // Si es PDF usamos fl_attachment, pero asegurándonos de que esté bien puesto
+                const isPdf = inv.fileType?.includes('pdf');
+                const downloadUrl = inv.url.replace('/upload/', '/upload/fl_attachment,dn_auto/');
 
                 return (
                   <tr key={inv.id} className="hover:bg-slate-700/30 transition-colors">
@@ -514,7 +516,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       const formData = new FormData();
       formData.append('file', file);
       formData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
-      formData.append('folder', 'invoices');
+      // Usamos public_id para forzar la carpeta ya que el preset puede ignorar 'folder'
+      const customPublicId = `invoices/${Date.now()}_${file.name.replace(/\.[^/.]+$/, "")}`;
+      formData.append('public_id', customPublicId);
 
       const cloudRes = await fetch(`https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/auto/upload`, {
         method: 'POST',
@@ -522,10 +526,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       });
       const cloudData = await cloudRes.json();
 
-      if (!cloudData.secure_url) throw new Error("Cloudinary upload failed");
+      if (!cloudData.secure_url) {
+        console.error("Cloudinary Error:", cloudData);
+        throw new Error("Cloudinary upload failed");
+      }
 
       // 2. Analyze with Gemini IA
-      // Read file as base64 for Gemini
       const reader = new FileReader();
       const base64Promise = new Promise<string>((resolve) => {
         reader.onload = () => {
@@ -536,66 +542,27 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       });
       const base64Data = await base64Promise;
 
-      const prompt = `Analiza esta FACTURA de ARCA/AFIP (Argentina). 
-      
-      IMPORTANTE: El archivo puede tener varias páginas (Original, Duplicado, Triplicado). 
-      SOLO analiza la primera página, la que tiene el encabezado que dice "ORIGINAL".
-      
-      DATOS A EXTRAER:
-      1. IMPORTE TOTAL: Busca el número al lado de "Importe Total: $" o en el cuadro de totales abajo a la derecha. Debe ser el valor final. 
-      2. NOMBRE/CONCEPTO: Busca el texto en la columna "Producto / Servicio" o el nombre de la empresa emisora. En el ejemplo sería "Reparación de TV...".
-      
-      FORMATO DE RESPUESTA:
-      RESPONDE ÚNICAMENTE CON UN JSON:
-      {"amount": "260000,00", "name": "Descripción corta"}
-      
-      CRITICAL:
-      - Envía el "amount" como un STRING tal cual aparece (con sus comas y puntos). Yo lo procesaré después.
-      - No incluyas símbolos de moneda ($).`;
+      const prompt = `Extrae el TOTAL de esta factura. 
+      Responde SOLO con un número decimal (usa punto para decimales). 
+      Si no lo encuentras, responde "0". 
+      Busca cerca de "Total", "Importe Total" o al final del documento.`;
 
-      const aiResponse = await sendMessageToGemini([], prompt, {
+      const aiResponseRaw = await sendMessageToGemini([], prompt, {
         base64: base64Data,
         mimeType: file.type
       });
 
-      console.log("Raw AI Response:", aiResponse); // Debugging
+      console.log("Raw AI Response:", aiResponseRaw);
 
-      let extractedData = { amount: 0, name: file.name };
-
-      try {
-        // Limpiamos la respuesta por si la IA añade markdown o texto extra
-        const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
-
-          // Parsing robusto para moneda (manejar 260.000,00 -> 260000)
-          let amountRaw = String(parsed.amount);
-          // Eliminar el signo $ por si la IA lo mandó igual
-          amountRaw = amountRaw.replace('$', '').trim();
-
-          // Si tiene coma y punto, asumimos formato ES (punto miles, coma decimal)
-          // Ejemplo: 260.000,00
-          if (amountRaw.includes(',') && amountRaw.includes('.')) {
-            amountRaw = amountRaw.replace(/\./g, '').replace(',', '.');
-          } else if (amountRaw.includes(',')) {
-            // Solo coma (asumimos decimal)
-            amountRaw = amountRaw.replace(',', '.');
-          }
-
-          extractedData = {
-            amount: parseFloat(amountRaw) || 0,
-            name: parsed.name || file.name
-          };
-        }
-      } catch (e) {
-        console.warn("IA focus failure, using manual input fallback", e);
-      }
+      // Limpiar respuesta para obtener solo el número
+      const amountMatch = aiResponseRaw.replace(/[^0-9,.]/g, '').replace(',', '.');
+      const finalAmount = parseFloat(amountMatch) || 0;
 
       // 3. Save to Supabase
       const { data: newInv, error } = await supabase.from('invoices').insert([{
-        name: extractedData.name || file.name,
+        name: file.name,
         url: cloudData.secure_url,
-        amount: extractedData.amount || 0,
+        amount: finalAmount,
         file_type: file.type,
       }]).select();
 
@@ -607,10 +574,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           name: newInv[0].name,
           url: newInv[0].url,
           amount: newInv[0].amount,
-          date: new Date(newInv[0].created_at).toLocaleDateString(), // Assuming 'created_at' for date
+          date: new Date(newInv[0].created_at).toLocaleDateString(),
           fileType: newInv[0].file_type
         }, ...invoices]);
-        alert(`Factura procesada: ${extractedData.name} - $${extractedData.amount}`);
+
+        if (finalAmount === 0) {
+          alert(`Factura subida, pero no pudimos detectar el importe automáticamente. Por favor, corrígelo con el icono del lápiz.`);
+        } else {
+          alert(`Factura procesada: $${finalAmount}`);
+        }
       }
     } catch (error) {
       console.error("Error procesando factura:", error);
@@ -656,9 +628,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     formData.append('file', file);
     formData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
 
-    // Organizar en carpetas: shop/new o shop/repaired
-    const folder = newProduct.condition === 'new' ? 'shop/new' : 'shop/repaired';
-    formData.append('folder', folder);
+    // Organizar en carpetas forzando el public_id
+    const categoryFolder = newProduct.condition === 'new' ? 'shop/new' : 'shop/repaired';
+    const customId = `${categoryFolder}/${Date.now()}_${file.name.replace(/\.[^/.]+$/, "")}`;
+    formData.append('public_id', customId);
 
     try {
       const response = await fetch(
