@@ -3,7 +3,7 @@ import { Page, Product, QuoteRequest, AdminView, SiteConfig, AnalyticsStats, Vis
 import {
   User, LayoutDashboard, FileText, ShoppingBag, Settings, Activity as ActivityIcon, Clock,
   BarChart3, Plus, Trash2, Upload, Search, CheckCircle, PenTool, Camera,
-  FileSpreadsheet, Receipt, Sparkles, Loader2, Calendar
+  FileSpreadsheet, Receipt, Sparkles, Loader2, Calendar, Pencil
 } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 import { sendMessageToGemini } from '../services/geminiService';
@@ -279,10 +279,21 @@ const BillingSection: React.FC<{
   invoices: Invoice[];
   handleInvoiceUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleDeleteInvoice: (id: string) => void;
+  handleEditInvoice: (id: string, newAmount: number) => void;
   isAnalyzing: boolean;
-}> = ({ invoices, handleInvoiceUpload, handleDeleteInvoice, isAnalyzing }) => {
+}> = ({ invoices, handleInvoiceUpload, handleDeleteInvoice, handleEditInvoice, isAnalyzing }) => {
   const currentMonth = new Date().toLocaleString('es-ES', { month: 'long' });
   const monthlyTotal = invoices.reduce((sum, inv) => sum + inv.amount, 0);
+
+  const promptNewAmount = (id: string, current: number) => {
+    const val = window.prompt("Ingresa el importe correcto:", current.toString());
+    if (val !== null) {
+      const parsed = parseFloat(val.replace(',', '.'));
+      if (!isNaN(parsed)) {
+        handleEditInvoice(id, parsed);
+      }
+    }
+  };
 
   return (
     <div className="space-y-6 pb-20">
@@ -336,24 +347,39 @@ const BillingSection: React.FC<{
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-700">
-              {invoices.map(inv => (
-                <tr key={inv.id} className="hover:bg-slate-700/30 transition-colors">
-                  <td className="px-4 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-slate-900 rounded text-gray-400"> {inv.fileType?.includes('pdf') ? 'PDF' : 'IMG'} </div>
-                      <div>
-                        <div className="font-bold text-white text-sm">{inv.name}</div>
-                        <a href={inv.url} target="_blank" rel="noreferrer" className="text-[10px] text-blue-400 hover:underline">Ver</a>
+              {invoices.map(inv => {
+                // Link con fallback de descarga si Ver falla
+                const downloadUrl = inv.url.replace('/upload/', '/upload/fl_attachment/');
+
+                return (
+                  <tr key={inv.id} className="hover:bg-slate-700/30 transition-colors">
+                    <td className="px-4 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-slate-900 rounded text-gray-400"> {inv.fileType?.includes('pdf') ? 'PDF' : 'IMG'} </div>
+                        <div>
+                          <div className="font-bold text-white text-sm">{inv.name}</div>
+                          <div className="flex gap-2">
+                            <a href={inv.url} target="_blank" rel="noreferrer" className="text-[10px] text-blue-400 hover:underline">Ver</a>
+                            <a href={downloadUrl} className="text-[10px] text-gray-500 hover:underline">Descargar</a>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-4 text-sm">{inv.date}</td>
-                  <td className="px-4 py-4 font-bold text-green-400">${inv.amount.toLocaleString()}</td>
-                  <td className="px-4 py-4 text-right">
-                    <button onClick={() => handleDeleteInvoice(inv.id)} className="text-gray-500 hover:text-red-400"><Trash2 size={18} /></button>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-4 py-4 text-sm">{inv.date}</td>
+                    <td className="px-4 py-4 font-bold text-green-400">
+                      <div className="flex items-center gap-2">
+                        ${inv.amount.toLocaleString()}
+                        <button onClick={() => promptNewAmount(inv.id, inv.amount)} className="text-gray-600 hover:text-blue-400 transition-colors">
+                          <Pencil size={12} />
+                        </button>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 text-right">
+                      <button onClick={() => handleDeleteInvoice(inv.id)} className="text-gray-500 hover:text-red-400"><Trash2 size={18} /></button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
           {invoices.length === 0 && (
@@ -510,11 +536,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       });
       const base64Data = await base64Promise;
 
-      const prompt = `Analiza esta FACTURA de ARCA/AFIP (Argentina).
+      const prompt = `Analiza esta FACTURA de ARCA/AFIP (Argentina). 
+      
+      IMPORTANTE: El archivo puede tener varias páginas (Original, Duplicado, Triplicado). 
+      SOLO analiza la primera página, la que tiene el encabezado que dice "ORIGINAL".
       
       DATOS A EXTRAER:
-      1. IMPORTE TOTAL: Busca el número al lado de "Importe Total: $" o en el cuadro de totales abajo a la derecha. Debe ser el valor final.
-      2. NOMBRE/CONCEPTO: Busca el texto en la columna "Producto / Servicio" o el nombre de la empresa emisora.
+      1. IMPORTE TOTAL: Busca el número al lado de "Importe Total: $" o en el cuadro de totales abajo a la derecha. Debe ser el valor final. 
+      2. NOMBRE/CONCEPTO: Busca el texto en la columna "Producto / Servicio" o el nombre de la empresa emisora. En el ejemplo sería "Reparación de TV...".
       
       FORMATO DE RESPUESTA:
       RESPONDE ÚNICAMENTE CON UN JSON:
@@ -541,7 +570,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
           // Parsing robusto para moneda (manejar 260.000,00 -> 260000)
           let amountRaw = String(parsed.amount);
+          // Eliminar el signo $ por si la IA lo mandó igual
+          amountRaw = amountRaw.replace('$', '').trim();
+
           // Si tiene coma y punto, asumimos formato ES (punto miles, coma decimal)
+          // Ejemplo: 260.000,00
           if (amountRaw.includes(',') && amountRaw.includes('.')) {
             amountRaw = amountRaw.replace(/\./g, '').replace(',', '.');
           } else if (amountRaw.includes(',')) {
@@ -594,6 +627,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       setInvoices(invoices.filter(i => i.id !== id));
     } else {
       alert("Error al eliminar factura.");
+    }
+  };
+
+  const handleEditInvoice = async (id: string, newAmount: number) => {
+    const { error } = await supabase.from('invoices').update({ amount: newAmount }).eq('id', id);
+    if (!error) {
+      setInvoices(invoices.map(inv => inv.id === id ? { ...inv, amount: newAmount } : inv));
+    } else {
+      alert("Error al actualizar factura.");
     }
   };
 
@@ -680,7 +722,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           {currentAdminView === AdminView.DASHBOARD && <DashboardSection analytics={analytics} visitorLogs={visitorLogs} productsCount={products.length} />}
           {currentAdminView === AdminView.PRODUCTS && <InventorySection products={products} newProduct={newProduct} setNewProduct={setNewProduct} handleImageUpload={handleImageUpload} handleAddProduct={handleAddProduct} handleDeleteProduct={handleDeleteProduct} />}
           {currentAdminView === AdminView.QUOTES && <QuotesSection quotes={quotes} handleQuoteStatus={handleQuoteStatus} handleDeleteQuote={handleDeleteQuote} />}
-          {currentAdminView === AdminView.BILLING && <BillingSection invoices={invoices} handleInvoiceUpload={handleInvoiceUpload} handleDeleteInvoice={handleDeleteInvoice} isAnalyzing={isAnalyzing} />}
+          {currentAdminView === AdminView.BILLING && <BillingSection invoices={invoices} handleInvoiceUpload={handleInvoiceUpload} handleDeleteInvoice={handleDeleteInvoice} handleEditInvoice={handleEditInvoice} isAnalyzing={isAnalyzing} />}
           {currentAdminView === AdminView.CONTENT && <SettingsSection siteConfig={siteConfig} setSiteConfig={setSiteConfig} handleUpdateConfig={handleUpdateConfig} />}
         </div>
       </div>
