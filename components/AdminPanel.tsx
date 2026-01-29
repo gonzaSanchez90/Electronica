@@ -344,7 +344,7 @@ const BillingSection: React.FC<{
               {isAnalyzing ? (
                 <>
                   <Loader2 className="animate-spin text-blue-400" size={20} />
-                  <span className="text-sm font-bold text-blue-400">Analizando...</span>
+                  <span className="text-sm font-bold text-blue-400">Subiendo...</span>
                 </>
               ) : (
                 <>
@@ -373,11 +373,6 @@ const BillingSection: React.FC<{
             </thead>
             <tbody className="divide-y divide-slate-700">
               {invoices.map(inv => {
-                // Generamos un link que fuerce la descarga correctamente
-                // Si es PDF usamos fl_attachment, pero asegurándonos de que esté bien puesto
-                const isPdf = inv.fileType?.includes('pdf');
-                const downloadUrl = inv.url.replace('/upload/', '/upload/fl_attachment,dn_auto/');
-
                 return (
                   <tr key={inv.id} className="hover:bg-slate-700/30 transition-colors">
                     <td className="px-4 py-4">
@@ -386,8 +381,8 @@ const BillingSection: React.FC<{
                         <div>
                           <div className="font-bold text-white text-sm">{inv.name}</div>
                           <div className="flex gap-2">
-                            <a href={inv.url} target="_blank" rel="noreferrer" className="text-[10px] text-blue-400 hover:underline">Ver</a>
-                            <a href={downloadUrl} className="text-[10px] text-gray-500 hover:underline">Descargar</a>
+                            <a href={inv.url} target="_blank" rel="noreferrer" className="text-[10px] text-blue-400 hover:underline">Ver en línea</a>
+                            <a href={inv.url} download className="text-[10px] text-gray-500 hover:underline">Descargar</a>
                           </div>
                         </div>
                       </div>
@@ -535,13 +530,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Pedir el importe manualmente
+    const amountStr = window.prompt("Ingresa el importe total de la factura (solo números):", "0");
+    if (amountStr === null) return; // Usuario canceló
+
+    const amount = parseFloat(amountStr.replace(',', '.')) || 0;
+
     setIsAnalyzing(true);
     try {
       // 1. Upload to Cloudinary
       const formData = new FormData();
       formData.append('file', file);
       formData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
-      // Usamos public_id para forzar la carpeta ya que el preset puede ignorar 'folder'
       const customPublicId = `unasignedelectronicalyg/invoices/${Date.now()}_${file.name.replace(/\.[^/.]+$/, "")}`;
       formData.append('public_id', customPublicId);
 
@@ -556,38 +556,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         throw new Error("Cloudinary upload failed");
       }
 
-      // 2. Analyze with Gemini IA
-      const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve) => {
-        reader.onload = () => {
-          const base64 = (reader.result as string).split(',')[1];
-          resolve(base64);
-        };
-        reader.readAsDataURL(file);
-      });
-      const base64Data = await base64Promise;
-
-      const prompt = `Extrae el TOTAL de esta factura. 
-      Responde SOLO con un número decimal (usa punto para decimales). 
-      Si no lo encuentras, responde "0". 
-      Busca cerca de "Total", "Importe Total" o al final del documento.`;
-
-      const aiResponseRaw = await sendMessageToGemini([], prompt, {
-        base64: base64Data,
-        mimeType: file.type
-      });
-
-      console.log("Raw AI Response:", aiResponseRaw);
-
-      // Limpiar respuesta para obtener solo el número
-      const amountMatch = aiResponseRaw.replace(/[^0-9,.]/g, '').replace(',', '.');
-      const finalAmount = parseFloat(amountMatch) || 0;
-
-      // 3. Save to Supabase
+      // 2. Save to Supabase (sin IA)
       const { data: newInv, error } = await supabase.from('invoices').insert([{
         name: file.name,
         url: cloudData.secure_url,
-        amount: finalAmount,
+        amount: amount,
         file_type: file.type,
       }]).select();
 
@@ -603,11 +576,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           fileType: newInv[0].file_type
         }, ...invoices]);
 
-        if (finalAmount === 0) {
-          alert(`Factura subida, pero no pudimos detectar el importe automáticamente. Por favor, corrígelo con el icono del lápiz.`);
-        } else {
-          alert(`Factura procesada: $${finalAmount}`);
-        }
+        alert(`Factura guardada: $${amount}`);
       }
     } catch (error) {
       console.error("Error procesando factura:", error);
