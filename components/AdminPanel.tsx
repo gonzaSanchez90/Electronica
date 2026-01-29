@@ -94,85 +94,110 @@ const InventorySection: React.FC<{
   handleImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleAddProduct: () => void;
   handleDeleteProduct: (id: string) => void;
-}> = ({ products, newProduct, setNewProduct, handleImageUpload, handleAddProduct, handleDeleteProduct }) => (
-  <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pb-10">
-    <div className="lg:col-span-4 bg-slate-800 p-6 rounded-2xl border border-slate-700 h-fit sticky top-24">
-      <h3 className="text-xl font-bold text-blue-400 mb-6 flex items-center gap-2"><Plus size={20} /> Agregar Producto</h3>
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-2">
-          <button onClick={() => setNewProduct({ ...newProduct, condition: 'new' })} className={`py-2 rounded-lg text-sm font-bold border transition-colors ${newProduct.condition === 'new' ? 'bg-blue-600 border-blue-600 text-white' : 'bg-slate-900 border-slate-600 text-gray-400 hover:text-white'}`}>Nuevo</button>
-          <button onClick={() => setNewProduct({ ...newProduct, condition: 'refurbished' })} className={`py-2 rounded-lg text-sm font-bold border transition-colors ${newProduct.condition === 'refurbished' ? 'bg-green-600 border-green-600 text-white' : 'bg-slate-900 border-slate-600 text-gray-400 hover:text-white'}`}>Restaurado</button>
-        </div>
-        <input type="text" placeholder="Nombre" className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:border-blue-500 outline-none" value={newProduct.name || ''} onChange={e => setNewProduct({ ...newProduct, name: e.target.value })} />
-        <textarea placeholder="Descripción" className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:border-blue-500 outline-none h-24 resize-none" value={newProduct.description || ''} onChange={e => setNewProduct({ ...newProduct, description: e.target.value })} />
-        <div className="grid grid-cols-2 gap-4">
-          <input type="number" placeholder="Precio ($)" className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:border-blue-500 outline-none" value={newProduct.price || ''} onChange={e => setNewProduct({ ...newProduct, price: parseFloat(e.target.value) })} />
-          <select className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:border-blue-500 outline-none" value={newProduct.category} onChange={e => setNewProduct({ ...newProduct, category: e.target.value as any })}>
-            <option value="TV">TV</option>
-            <option value="Audio">Audio</option>
-            <option value="Computación">Computación</option>
-            <option value="Móvil">Móvil</option>
-            <option value="Consolas">Consolas</option>
-            <option value="Cocina">Cocina</option>
-            <option value="Hogar">Hogar</option>
-            <option value="Otros">Otros</option>
-          </select>
-        </div>
-        <div className="space-y-4 p-3 bg-slate-900 rounded-xl border border-slate-700">
-          <label className="text-xs text-gray-400 uppercase font-bold block">Imagen del Producto</label>
+}> = ({ products, newProduct, setNewProduct, handleImageUpload, handleAddProduct, handleDeleteProduct }) => {
+  const newItems = products.filter(p => p.condition === 'new');
+  const refurbishedItems = products.filter(p => !p.condition || p.condition === 'refurbished');
 
-          {newProduct.imageUrl && (
-            <div className="relative h-40 rounded-lg overflow-hidden border border-slate-700">
-              <img src={newProduct.imageUrl} alt="Preview" className="w-full h-full object-cover" />
-              <button
-                onClick={() => setNewProduct({ ...newProduct, imageUrl: '' })}
-                className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 transition-colors"
-              >
-                <Plus size={16} className="rotate-45" />
-              </button>
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="relative h-20 bg-slate-800 rounded-lg border-2 border-dashed border-slate-600 flex flex-col items-center justify-center hover:border-blue-500 transition-colors cursor-pointer group">
-              <Upload className="mb-1 text-gray-500 group-hover:text-blue-400" size={20} />
-              <span className="text-[10px] text-gray-400 uppercase font-bold">Galería</span>
-              <input type="file" accept="image/*" onChange={handleImageUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
-            </div>
-
-            <div className="relative h-20 bg-slate-800 rounded-lg border-2 border-dashed border-slate-600 flex flex-col items-center justify-center hover:border-blue-500 transition-colors cursor-pointer group">
-              <Camera className="mb-1 text-gray-500 group-hover:text-blue-400" size={20} />
-              <span className="text-[10px] text-gray-400 uppercase font-bold">Cámara</span>
-              <input type="file" accept="image/*" capture="environment" onChange={handleImageUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
-            </div>
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pb-10">
+      <div className="lg:col-span-4 bg-slate-800 p-6 rounded-2xl border border-slate-700 h-fit sticky top-24">
+        <h3 className="text-xl font-bold text-blue-400 mb-6 flex items-center gap-2"><Plus size={20} /> Agregar Producto</h3>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-2">
+            <button onClick={() => setNewProduct({ ...newProduct, condition: 'new' })} className={`py-2 rounded-lg text-sm font-bold border transition-colors ${newProduct.condition === 'new' ? 'bg-blue-600 border-blue-600 text-white' : 'bg-slate-900 border-slate-600 text-gray-400 hover:text-white'}`}>Nuevo</button>
+            <button onClick={() => setNewProduct({ ...newProduct, condition: 'refurbished' })} className={`py-2 rounded-lg text-sm font-bold border transition-colors ${newProduct.condition === 'refurbished' ? 'bg-green-600 border-green-600 text-white' : 'bg-slate-900 border-slate-600 text-gray-400 hover:text-white'}`}>Restaurado</button>
           </div>
-        </div>
-        <button onClick={handleAddProduct} className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-all active:scale-95"><Plus size={18} /> Publicar</button>
-      </div>
-    </div>
-    <div className="lg:col-span-8 bg-slate-800 p-6 rounded-2xl border border-slate-700">
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="text-xl font-bold text-white">Inventario Actual ({products.length})</h3>
-      </div>
-      <div className="space-y-3">
-        {products.map(p => (
-          <div key={p.id} className="bg-slate-900 p-4 rounded-xl flex justify-between items-center border border-slate-700">
-            <div className="flex gap-4 items-center">
-              <div className="w-16 h-16 rounded-lg overflow-hidden bg-slate-800 flex-shrink-0">
-                <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
+          {/* ... inputs stay same ... */}
+          <input type="text" placeholder="Nombre" className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:border-blue-500 outline-none" value={newProduct.name || ''} onChange={e => setNewProduct({ ...newProduct, name: e.target.value })} />
+          <textarea placeholder="Descripción" className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:border-blue-500 outline-none h-24 resize-none" value={newProduct.description || ''} onChange={e => setNewProduct({ ...newProduct, description: e.target.value })} />
+          <div className="grid grid-cols-2 gap-4">
+            <input type="number" placeholder="Precio ($)" className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:border-blue-500 outline-none" value={newProduct.price || ''} onChange={e => setNewProduct({ ...newProduct, price: parseFloat(e.target.value) })} />
+            <select className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:border-blue-500 outline-none" value={newProduct.category} onChange={e => setNewProduct({ ...newProduct, category: e.target.value as any })}>
+              <option value="TV">TV</option>
+              <option value="Audio">Audio</option>
+              <option value="Computación">Computación</option>
+              <option value="Móvil">Móvil</option>
+              <option value="Consolas">Consolas</option>
+              <option value="Cocina">Cocina</option>
+              <option value="Hogar">Hogar</option>
+              <option value="Otros">Otros</option>
+            </select>
+          </div>
+          {/* ... image upload UI stays same ... */}
+          <div className="space-y-4 p-3 bg-slate-900 rounded-xl border border-slate-700">
+            <label className="text-xs text-gray-400 uppercase font-bold block">Imagen del Producto</label>
+            {newProduct.imageUrl && (
+              <div className="relative h-40 rounded-lg overflow-hidden border border-slate-700">
+                <img src={newProduct.imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                <button onClick={() => setNewProduct({ ...newProduct, imageUrl: '' })} className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 transition-colors"><Plus size={16} className="rotate-45" /></button>
               </div>
-              <div>
-                <div className="text-white font-bold">{p.name}</div>
-                <div className="text-xs text-green-400">${p.price} - {p.category}</div>
+            )}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="relative h-20 bg-slate-800 rounded-lg border-2 border-dashed border-slate-600 flex flex-col items-center justify-center hover:border-blue-500 transition-colors cursor-pointer group">
+                <Upload className="mb-1 text-gray-500 group-hover:text-blue-400" size={20} />
+                <span className="text-[10px] text-gray-400 uppercase font-bold">Galería</span>
+                <input type="file" accept="image/*" onChange={handleImageUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
+              </div>
+              <div className="relative h-20 bg-slate-800 rounded-lg border-2 border-dashed border-slate-600 flex flex-col items-center justify-center hover:border-blue-500 transition-colors cursor-pointer group">
+                <Camera className="mb-1 text-gray-500 group-hover:text-blue-400" size={20} />
+                <span className="text-[10px] text-gray-400 uppercase font-bold">Cámara</span>
+                <input type="file" accept="image/*" capture="environment" onChange={handleImageUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
               </div>
             </div>
-            <button onClick={() => handleDeleteProduct(p.id)} className="text-gray-500 hover:text-red-500 p-2"><Trash2 size={20} /></button>
           </div>
-        ))}
+          <button onClick={handleAddProduct} className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-all active:scale-95"><Plus size={18} /> Publicar</button>
+        </div>
+      </div>
+      <div className="lg:col-span-8 bg-slate-800 p-6 rounded-2xl border border-slate-700 space-y-12">
+        {/* Sección de Nuevos */}
+        <div>
+          <h3 className="text-xl font-bold text-blue-400 mb-6 flex items-center gap-2">🛒 Productos Nuevos ({newItems.length})</h3>
+          <div className="space-y-3">
+            {newItems.map(p => (
+              <div key={p.id} className="bg-slate-900 p-4 rounded-xl flex justify-between items-center border border-slate-700 hover:border-blue-500 transition-colors group">
+                <div className="flex gap-4 items-center">
+                  <div className="w-16 h-16 rounded-lg overflow-hidden bg-slate-800 flex-shrink-0">
+                    <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
+                  </div>
+                  <div>
+                    <div className="text-white font-bold">{p.name}</div>
+                    <div className="text-xs text-blue-400">${p.price} - {p.category}</div>
+                  </div>
+                </div>
+                <button onClick={() => handleDeleteProduct(p.id)} className="opacity-50 hover:opacity-100 text-gray-500 hover:text-red-500 p-2"><Trash2 size={20} /></button>
+              </div>
+            ))}
+            {newItems.length === 0 && <p className="text-gray-500 text-sm text-center py-4 italic">No hay productos nuevos.</p>}
+          </div>
+        </div>
+
+        {/* Sección de Restaurados */}
+        <div>
+          <h3 className="text-xl font-bold text-green-400 mb-6 flex items-center gap-2">🛠️ Restaurados / Usados ({refurbishedItems.length})</h3>
+          <div className="space-y-3">
+            {refurbishedItems.map(p => (
+              <div key={p.id} className="bg-slate-900 p-4 rounded-xl flex justify-between items-center border border-slate-700 hover:border-green-500 transition-colors group">
+                <div className="flex gap-4 items-center">
+                  <div className="w-16 h-16 rounded-lg overflow-hidden bg-slate-800 flex-shrink-0">
+                    <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
+                  </div>
+                  <div>
+                    <div className="text-white font-bold">{p.name}</div>
+                    <div className="text-xs text-green-400">${p.price} - {p.category}</div>
+                  </div>
+                </div>
+                <button onClick={() => handleDeleteProduct(p.id)} className="opacity-50 hover:opacity-100 text-gray-500 hover:text-red-500 p-2"><Trash2 size={20} /></button>
+              </div>
+            ))}
+            {refurbishedItems.length === 0 && <p className="text-gray-500 text-sm text-center py-4 italic">No hay productos restaurados.</p>}
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
+
+// ... handler changes below ...
 
 const QuotesSection: React.FC<{
   quotes: QuoteRequest[];
@@ -517,7 +542,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       formData.append('file', file);
       formData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
       // Usamos public_id para forzar la carpeta ya que el preset puede ignorar 'folder'
-      const customPublicId = `invoices/${Date.now()}_${file.name.replace(/\.[^/.]+$/, "")}`;
+      const customPublicId = `unasignedelectronicalyg/invoices/${Date.now()}_${file.name.replace(/\.[^/.]+$/, "")}`;
       formData.append('public_id', customPublicId);
 
       const cloudRes = await fetch(`https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/auto/upload`, {
@@ -630,7 +655,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
     // Organizar en carpetas forzando el public_id
     const categoryFolder = newProduct.condition === 'new' ? 'shop/new' : 'shop/repaired';
-    const customId = `${categoryFolder}/${Date.now()}_${file.name.replace(/\.[^/.]+$/, "")}`;
+    const customId = `unasignedelectronicalyg/${categoryFolder}/${Date.now()}_${file.name.replace(/\.[^/.]+$/, "")}`;
     formData.append('public_id', customId);
 
     try {
