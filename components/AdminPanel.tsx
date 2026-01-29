@@ -498,15 +498,27 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       if (!cloudData.secure_url) throw new Error("Cloudinary upload failed");
 
       // 2. Analyze with Gemini IA
-      // For PDFs, we'll ask the user to provide the data or just use a generic prompt.
-      // Actually, let's try to pass the image if it's an image, or just the URL.
-      // For simplicity and because geminiService handles history/messages:
-      const prompt = `Analiza esta factura (URL: ${cloudData.secure_url}).
-      RESPONDE ÚNICAMENTE CON UN JSON EN ESTE FORMATO:
-      {"amount": 1234.56, "name": "Proveedor o Concepto"}.
-      Si no estás seguro del importe, intenta encontrar el TOTAL.`;
+      // Read file as base64 for Gemini
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve) => {
+        reader.onload = () => {
+          const base64 = (reader.result as string).split(',')[1];
+          resolve(base64);
+        };
+        reader.readAsDataURL(file);
+      });
+      const base64Data = await base64Promise;
 
-      const aiResponse = await sendMessageToGemini([], prompt);
+      const prompt = `Analiza esta factura. 
+      RESPONDE ÚNICAMENTE CON UN JSON EN ESTE FORMATO: 
+      {"amount": 1234.56, "name": "Proveedor o Concepto"}. 
+      Si no estás seguro del importe, busca el TOTAL o TOTAL A PAGAR.`;
+
+      const aiResponse = await sendMessageToGemini([], prompt, {
+        base64: base64Data,
+        mimeType: file.type
+      });
+
       let extractedData = { amount: 0, name: file.name };
 
       try {

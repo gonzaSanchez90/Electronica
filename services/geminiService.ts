@@ -24,7 +24,11 @@ IMPORTANTE:
 - Si preguntan por "Otros" aparatos no listados, diles que pueden usar la opción "Otros" en el formulario de presupuesto para consultarnos.
 `;
 
-export const sendMessageToGemini = async (history: { role: string, parts: { text: string }[] }[], newMessage: string): Promise<string> => {
+export const sendMessageToGemini = async (
+  history: { role: string, parts: { text: string }[] }[],
+  newMessage: string,
+  fileData?: { base64: string, mimeType: string }
+): Promise<string> => {
   try {
     const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || '';
     if (!apiKey) {
@@ -46,8 +50,20 @@ export const sendMessageToGemini = async (history: { role: string, parts: { text
       }))
     });
 
-    const result = await chat.sendMessage({ message: newMessage });
-    return result.text || "Lo siento, no pude generar una respuesta.";
+    const messageParts = [{ text: newMessage }];
+
+    if (fileData) {
+      messageParts.push({
+        inlineData: {
+          data: fileData.base64,
+          mimeType: fileData.mimeType
+        }
+      } as any);
+    }
+
+    // Usamos 'parts' directamente si el SDK lo permite, o estructuramos el mensaje
+    const result = await chat.sendMessage(messageParts as any);
+    return result.response.text() || "Lo siento, no pude generar una respuesta.";
   } catch (error) {
     console.error("Error communicating with Gemini:", error);
     return "Tuve un problema técnico momentáneo. Por favor intenta de nuevo.";
