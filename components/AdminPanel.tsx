@@ -542,8 +542,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       const formData = new FormData();
       formData.append('file', file);
       formData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
-      const customPublicId = `unasignedelectronicalyg/invoices/${Date.now()}_${file.name.replace(/\.[^/.]+$/, "")}`;
-      formData.append('public_id', customPublicId);
+      formData.append('folder', 'invoices'); // Carpeta simple sin prefijo
 
       const cloudRes = await fetch(`https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/auto/upload`, {
         method: 'POST',
@@ -551,10 +550,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       });
       const cloudData = await cloudRes.json();
 
+      console.log("Cloudinary Response:", cloudData); // Debug
+
       if (!cloudData.secure_url) {
         console.error("Cloudinary Error:", cloudData);
+        alert(`Error de Cloudinary: ${cloudData.error?.message || 'Desconocido'}`);
         throw new Error("Cloudinary upload failed");
       }
+
+      console.log("Archivo subido a:", cloudData.secure_url);
+      console.log("Public ID:", cloudData.public_id);
 
       // 2. Save to Supabase (sin IA)
       const { data: newInv, error } = await supabase.from('invoices').insert([{
@@ -576,7 +581,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           fileType: newInv[0].file_type
         }, ...invoices]);
 
-        alert(`Factura guardada: $${amount}`);
+        alert(`✅ Factura guardada: $${amount}\n📁 Carpeta: invoices\n🔗 URL guardada correctamente`);
       }
     } catch (error) {
       console.error("Error procesando factura:", error);
