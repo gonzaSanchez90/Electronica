@@ -510,10 +510,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       });
       const base64Data = await base64Promise;
 
-      const prompt = `Analiza esta factura. 
-      RESPONDE ÚNICAMENTE CON UN JSON EN ESTE FORMATO: 
-      {"amount": 1234.56, "name": "Proveedor o Concepto"}. 
-      Si no estás seguro del importe, busca el TOTAL o TOTAL A PAGAR.`;
+      const prompt = `Analiza esta FACTURA y extrae los datos principales.
+      Busca específicamente:
+      1. El IMPORTE TOTAL (suele decir "Total", "TOTAL A PAGAR", o "Importe Total"). En facturas de ARCA/AFIP está abajo a la derecha.
+      2. El NOMBRE (busca el concepto de la reparación o el nombre del emisor/receptor, lo que mejor identifique el gasto/venta).
+      
+      RESPONDE ÚNICAMENTE CON UN JSON EN ESTE FORMATO:
+      {"amount": 1234.56, "name": "Proveedor o Concepto"}
+      
+      NOTAS: 
+      - El importe debe ser un número (no incluyas "$").
+      - Usa el punto (.) para los decimales.
+      - Si hay varios importes, toma siempre el TOTAL FINAL.`;
 
       const aiResponse = await sendMessageToGemini([], prompt, {
         base64: base64Data,
@@ -523,12 +531,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       let extractedData = { amount: 0, name: file.name };
 
       try {
-        const jsonMatch = aiResponse.match(/\{.*\}/);
+        // Limpiamos la respuesta por si la IA añade markdown o texto extra
+        const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-          extractedData = JSON.parse(jsonMatch[0]);
+          const parsed = JSON.parse(jsonMatch[0]);
+          extractedData = {
+            amount: Number(parsed.amount) || 0,
+            name: parsed.name || file.name
+          };
         }
       } catch (e) {
-        console.warn("IA focus failure, using manual input fallback");
+        console.warn("IA focus failure, using manual input fallback", e);
       }
 
       // 3. Save to Supabase
