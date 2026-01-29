@@ -272,8 +272,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }]).select();
 
     if (error) {
-      console.error("Error guardando producto:", error);
-      alert("Error al guardar en la base de datos.");
+      console.error("Error detallado de Supabase:", error);
+      alert(`Error al guardar en la base de datos: ${error.message}. ¿Ejecutaste el script SQL de las tablas?`);
       return;
     }
 
@@ -319,7 +319,27 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       alert("Error al eliminar solicitud.");
     }
   };
-  const handleUpdateConfig = (e: React.FormEvent) => { e.preventDefault(); alert("Configuración actualizada."); };
+  const handleUpdateConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const { error } = await supabase
+      .from('site_config')
+      .upsert({
+        id: 1, // We keep a single row for configuration
+        hero_title: siteConfig.heroTitle,
+        hero_subtitle: siteConfig.heroSubtitle,
+        contact_email: siteConfig.contactEmail,
+        contact_phone: siteConfig.contactPhone,
+        address: siteConfig.address,
+        opening_hours: siteConfig.openingHours
+      });
+
+    if (error) {
+      console.error("Error actualizando configuración:", error);
+      alert(`Error al guardar configuración: ${error.message}`);
+    } else {
+      alert("Configuración guardada correctamente en la nube.");
+    }
+  };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

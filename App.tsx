@@ -61,6 +61,19 @@ const App: React.FC = () => {
         })));
       }
 
+      // Fetch Config
+      const { data: configData } = await supabase.from('site_config').select('*').single();
+      if (configData) {
+        setSiteConfig({
+          heroTitle: configData.hero_title,
+          heroSubtitle: configData.hero_subtitle,
+          contactEmail: configData.contact_email,
+          contactPhone: configData.contact_phone,
+          address: configData.address,
+          openingHours: configData.opening_hours
+        });
+      }
+
       // Fetch Quotes
       const { data: qData } = await supabase.from('quotes').select('*');
       if (qData) {
