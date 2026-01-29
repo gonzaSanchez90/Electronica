@@ -510,23 +510,26 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       });
       const base64Data = await base64Promise;
 
-      const prompt = `Analiza esta FACTURA y extrae los datos principales.
-      Busca específicamente:
-      1. El IMPORTE TOTAL (suele decir "Total", "TOTAL A PAGAR", o "Importe Total"). En facturas de ARCA/AFIP está abajo a la derecha.
-      2. El NOMBRE (busca el concepto de la reparación o el nombre del emisor/receptor, lo que mejor identifique el gasto/venta).
+      const prompt = `Analiza esta FACTURA de ARCA/AFIP (Argentina).
       
-      RESPONDE ÚNICAMENTE CON UN JSON EN ESTE FORMATO:
-      {"amount": 1234.56, "name": "Proveedor o Concepto"}
+      DATOS A EXTRAER:
+      1. IMPORTE TOTAL: Busca el número al lado de "Importe Total: $" o en el cuadro de totales abajo a la derecha. Debe ser el valor final.
+      2. NOMBRE/CONCEPTO: Busca el texto en la columna "Producto / Servicio" o el nombre de la empresa emisora.
       
-      NOTAS: 
-      - El importe debe ser un número (no incluyas "$").
-      - Usa el punto (.) para los decimales.
-      - Si hay varios importes, toma siempre el TOTAL FINAL.`;
+      FORMATO DE RESPUESTA:
+      RESPONDE ÚNICAMENTE CON UN JSON:
+      {"amount": "260000,00", "name": "Descripción corta"}
+      
+      CRITICAL:
+      - Envía el "amount" como un STRING tal cual aparece (con sus comas y puntos). Yo lo procesaré después.
+      - No incluyas símbolos de moneda ($).`;
 
       const aiResponse = await sendMessageToGemini([], prompt, {
         base64: base64Data,
         mimeType: file.type
       });
+
+      console.log("Raw AI Response:", aiResponse); // Debugging
 
       let extractedData = { amount: 0, name: file.name };
 
@@ -535,8 +538,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           const parsed = JSON.parse(jsonMatch[0]);
+
+          // Parsing robusto para moneda (manejar 260.000,00 -> 260000)
+          let amountRaw = String(parsed.amount);
+          // Si tiene coma y punto, asumimos formato ES (punto miles, coma decimal)
+          if (amountRaw.includes(',') && amountRaw.includes('.')) {
+            amountRaw = amountRaw.replace(/\./g, '').replace(',', '.');
+          } else if (amountRaw.includes(',')) {
+            // Solo coma (asumimos decimal)
+            amountRaw = amountRaw.replace(',', '.');
+          }
+
           extractedData = {
-            amount: Number(parsed.amount) || 0,
+            amount: parseFloat(amountRaw) || 0,
             name: parsed.name || file.name
           };
         }
