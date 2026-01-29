@@ -553,7 +553,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       const formData = new FormData();
       formData.append('file', file);
       formData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
-      formData.append('folder', 'invoices'); // Carpeta simple sin prefijo
+
+      // Forzar la carpeta usando public_id (el preset lo ignora si usamos solo 'folder')
+      // Formato: invoices/timestamp_nombrearchivo
+      const timestamp = Date.now();
+      const cleanFileName = file.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9]/g, '_');
+      const publicId = `invoices/${timestamp}_${cleanFileName}`;
+      formData.append('public_id', publicId);
 
       const cloudRes = await fetch(`https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/auto/upload`, {
         method: 'POST',
@@ -569,8 +575,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         throw new Error("Cloudinary upload failed");
       }
 
-      console.log("Archivo subido a:", cloudData.secure_url);
-      console.log("Public ID:", cloudData.public_id);
+      console.log("✅ Archivo subido a:", cloudData.secure_url);
+      console.log("📁 Public ID:", cloudData.public_id);
+      console.log("📂 Carpeta esperada: invoices/");
 
       // 2. Save to Supabase (sin IA)
       const { data: newInv, error } = await supabase.from('invoices').insert([{
@@ -592,7 +599,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           fileType: newInv[0].file_type
         }, ...invoices]);
 
-        alert(`✅ Factura guardada: $${amount}\n📁 Carpeta: invoices\n🔗 URL guardada correctamente`);
+        alert(`✅ Factura guardada: $${amount}\n📁 Verifica la carpeta 'invoices' en Cloudinary`);
       }
     } catch (error) {
       console.error("Error procesando factura:", error);
@@ -640,7 +647,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
     // Organizar en carpetas forzando el public_id
     const categoryFolder = newProduct.condition === 'new' ? 'shop/new' : 'shop/repaired';
-    const customId = `unasignedelectronicalyg/${categoryFolder}/${Date.now()}_${file.name.replace(/\.[^/.]+$/, "")}`;
+    const timestamp = Date.now();
+    const cleanFileName = file.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9]/g, '_');
+    const customId = `${categoryFolder}/${timestamp}_${cleanFileName}`;
     formData.append('public_id', customId);
 
     try {
@@ -649,6 +658,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         { method: 'POST', body: formData }
       );
       const data = await response.json();
+
+      console.log("📸 Producto subido a:", data.secure_url);
+      console.log("📁 Public ID:", data.public_id);
+
       if (data.secure_url) {
         setNewProduct(prev => ({ ...prev, imageUrl: data.secure_url }));
       } else {
