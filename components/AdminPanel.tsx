@@ -373,16 +373,27 @@ const BillingSection: React.FC<{
             </thead>
             <tbody className="divide-y divide-slate-700">
               {invoices.map(inv => {
+                // Para PDFs de Cloudinary, necesitamos transformar la URL
+                const isPdf = inv.fileType?.includes('pdf');
+
+                // URL para ver: agregar fl_attachment para forzar descarga en algunos navegadores
+                const viewUrl = inv.url;
+
+                // URL para descargar: agregar fl_attachment y dl para forzar descarga
+                const downloadUrl = isPdf
+                  ? inv.url.replace('/upload/', '/upload/fl_attachment/')
+                  : inv.url;
+
                 return (
                   <tr key={inv.id} className="hover:bg-slate-700/30 transition-colors">
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="p-2 bg-slate-900 rounded text-gray-400"> {inv.fileType?.includes('pdf') ? 'PDF' : 'IMG'} </div>
+                        <div className="p-2 bg-slate-900 rounded text-gray-400"> {isPdf ? 'PDF' : 'IMG'} </div>
                         <div>
                           <div className="font-bold text-white text-sm">{inv.name}</div>
                           <div className="flex gap-2">
-                            <a href={inv.url} target="_blank" rel="noreferrer" className="text-[10px] text-blue-400 hover:underline">Ver en línea</a>
-                            <a href={inv.url} download className="text-[10px] text-gray-500 hover:underline">Descargar</a>
+                            <a href={viewUrl} target="_blank" rel="noreferrer" className="text-[10px] text-blue-400 hover:underline">Ver</a>
+                            <a href={downloadUrl} download={inv.name} className="text-[10px] text-gray-500 hover:underline">Descargar</a>
                           </div>
                         </div>
                       </div>
