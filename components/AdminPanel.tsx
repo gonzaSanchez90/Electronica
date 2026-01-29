@@ -555,10 +555,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       formData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
 
       // Forzar la carpeta usando public_id (el preset lo ignora si usamos solo 'folder')
-      // Formato: invoices/timestamp_nombrearchivo
+      // Formato: unasignedelectronicalyg/invoices/timestamp_nombrearchivo
       const timestamp = Date.now();
       const cleanFileName = file.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9]/g, '_');
-      const publicId = `invoices/${timestamp}_${cleanFileName}`;
+      const publicId = `unasignedelectronicalyg/invoices/${timestamp}_${cleanFileName}`;
       formData.append('public_id', publicId);
 
       const cloudRes = await fetch(`https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/auto/upload`, {
@@ -649,7 +649,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     const categoryFolder = newProduct.condition === 'new' ? 'shop/new' : 'shop/repaired';
     const timestamp = Date.now();
     const cleanFileName = file.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9]/g, '_');
-    const customId = `${categoryFolder}/${timestamp}_${cleanFileName}`;
+    const customId = `unasignedelectronicalyg/${categoryFolder}/${timestamp}_${cleanFileName}`;
     formData.append('public_id', customId);
 
     try {
