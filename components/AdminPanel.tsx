@@ -231,16 +231,40 @@ const SettingsSection: React.FC<{
       <form onSubmit={handleUpdateConfig} className="space-y-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div className="space-y-4">
-            <h4 className="text-sm uppercase font-bold text-gray-500">Sección Hero</h4>
-            <input type="text" className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:border-blue-500 outline-none" value={siteConfig.heroTitle} onChange={e => setSiteConfig({ ...siteConfig, heroTitle: e.target.value })} />
-            <textarea className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:border-blue-500 outline-none h-32 resize-none" value={siteConfig.heroSubtitle} onChange={e => setSiteConfig({ ...siteConfig, heroSubtitle: e.target.value })} />
+            <h4 className="text-sm uppercase font-bold text-blue-400">Información del Sitio</h4>
+            <div className="space-y-4">
+              <div>
+                <label className="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Nombre de la Empresa</label>
+                <input type="text" placeholder="Ej: Electrónica L & G" className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:border-blue-500 outline-none" value={siteConfig.heroTitle} onChange={e => setSiteConfig({ ...siteConfig, heroTitle: e.target.value })} />
+              </div>
+              <div>
+                <label className="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Pequeña Descripción (Hero)</label>
+                <textarea placeholder="Ej: Expertos en reparaciones y ventas..." className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:border-blue-500 outline-none h-32 resize-none" value={siteConfig.heroSubtitle} onChange={e => setSiteConfig({ ...siteConfig, heroSubtitle: e.target.value })} />
+              </div>
+            </div>
           </div>
           <div className="space-y-4">
-            <h4 className="text-sm uppercase font-bold text-gray-500">Contacto</h4>
-            <input type="text" className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:border-blue-500 outline-none" placeholder="Email" value={siteConfig.contactEmail} onChange={e => setSiteConfig({ ...siteConfig, contactEmail: e.target.value })} />
-            <input type="text" className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:border-blue-500 outline-none" placeholder="Teléfono" value={siteConfig.contactPhone} onChange={e => setSiteConfig({ ...siteConfig, contactPhone: e.target.value })} />
-            <input type="text" className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:border-blue-500 outline-none" placeholder="Dirección" value={siteConfig.address} onChange={e => setSiteConfig({ ...siteConfig, address: e.target.value })} />
-            <input type="text" className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:border-blue-500 outline-none" placeholder="Horarios" value={siteConfig.openingHours} onChange={e => setSiteConfig({ ...siteConfig, openingHours: e.target.value })} />
+            <h4 className="text-sm uppercase font-bold text-blue-400">Contacto y Ubicación</h4>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Email</label>
+                  <input type="email" className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:border-blue-500 outline-none" placeholder="correo@ejemplo.com" value={siteConfig.contactEmail} onChange={e => setSiteConfig({ ...siteConfig, contactEmail: e.target.value })} />
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Teléfono</label>
+                  <input type="text" className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:border-blue-500 outline-none" placeholder="+34 916 344 875" value={siteConfig.contactPhone} onChange={e => setSiteConfig({ ...siteConfig, contactPhone: e.target.value })} />
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Dirección de la Empresa</label>
+                <input type="text" className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:border-blue-500 outline-none" placeholder="Ej: Ciudad Futura, Calle 123" value={siteConfig.address} onChange={e => setSiteConfig({ ...siteConfig, address: e.target.value })} />
+              </div>
+              <div>
+                <label className="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Horario de Trabajo</label>
+                <input type="text" className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:border-blue-500 outline-none" placeholder="Ej: Lun-Vie 9:00 - 18:00" value={siteConfig.openingHours} onChange={e => setSiteConfig({ ...siteConfig, openingHours: e.target.value })} />
+              </div>
+            </div>
           </div>
         </div>
         <button type="submit" className="px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold transition-all"><CheckCircle size={18} className="inline mr-2" /> Guardar Cambios</button>
