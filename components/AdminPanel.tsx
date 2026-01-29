@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Page, Product, QuoteRequest, AdminView, SiteConfig, AnalyticsStats, VisitorLog } from '../types';
 import {
   User, LayoutDashboard, FileText, ShoppingBag, Settings, Activity as ActivityIcon, Clock,
-  BarChart3, Plus, Trash2, Upload, Search, CheckCircle, PenTool
+  BarChart3, Plus, Trash2, Upload, Search, CheckCircle, PenTool, Camera
 } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 
@@ -116,18 +116,33 @@ const InventorySection: React.FC<{
             <option value="Otros">Otros</option>
           </select>
         </div>
-        <div className="space-y-2 p-3 bg-slate-900 rounded-xl border border-slate-700">
-          <label className="text-xs text-gray-400 uppercase font-bold block mb-2">Imagen del Producto</label>
-          <div className="relative group cursor-pointer h-32 bg-slate-800 rounded-lg border-2 border-dashed border-slate-600 flex flex-col items-center justify-center hover:border-blue-500 transition-colors overflow-hidden">
-            {newProduct.imageUrl ? (
+        <div className="space-y-4 p-3 bg-slate-900 rounded-xl border border-slate-700">
+          <label className="text-xs text-gray-400 uppercase font-bold block">Imagen del Producto</label>
+
+          {newProduct.imageUrl && (
+            <div className="relative h-40 rounded-lg overflow-hidden border border-slate-700">
               <img src={newProduct.imageUrl} alt="Preview" className="w-full h-full object-cover" />
-            ) : (
-              <div className="text-center">
-                <Upload className="mx-auto mb-2 text-gray-500" size={24} />
-                <span className="text-xs text-gray-400">Seleccionar Archivo</span>
-              </div>
-            )}
-            <input type="file" accept="image/*" onChange={handleImageUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
+              <button
+                onClick={() => setNewProduct({ ...newProduct, imageUrl: '' })}
+                className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 transition-colors"
+              >
+                <Plus size={16} className="rotate-45" />
+              </button>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="relative h-20 bg-slate-800 rounded-lg border-2 border-dashed border-slate-600 flex flex-col items-center justify-center hover:border-blue-500 transition-colors cursor-pointer group">
+              <Upload className="mb-1 text-gray-500 group-hover:text-blue-400" size={20} />
+              <span className="text-[10px] text-gray-400 uppercase font-bold">Galería</span>
+              <input type="file" accept="image/*" onChange={handleImageUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
+            </div>
+
+            <div className="relative h-20 bg-slate-800 rounded-lg border-2 border-dashed border-slate-600 flex flex-col items-center justify-center hover:border-blue-500 transition-colors cursor-pointer group">
+              <Camera className="mb-1 text-gray-500 group-hover:text-blue-400" size={20} />
+              <span className="text-[10px] text-gray-400 uppercase font-bold">Cámara</span>
+              <input type="file" accept="image/*" capture="environment" onChange={handleImageUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
+            </div>
           </div>
         </div>
         <button onClick={handleAddProduct} className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-all active:scale-95"><Plus size={18} /> Publicar</button>
