@@ -48,58 +48,67 @@ const App: React.FC = () => {
   // --- PERSISTENCE: FETCH FROM SUPABASE ---
   useEffect(() => {
     const fetchPersistentData = async () => {
-      // Fetch Products
-      const { data: pData } = await supabase.from('products').select('*');
-      if (pData) {
-        setProducts(pData.map(p => ({
-          id: p.id,
-          name: p.name,
-          description: p.description,
-          price: p.price,
-          category: p.category,
-          condition: p.condition,
-          imageUrl: p.image_url
-        })));
+      if (!supabase) {
+        console.warn("Supabase client not initialized. Using constant data.");
+        return;
       }
 
-      // Fetch Config
-      const { data: configData } = await supabase.from('site_config').select('*').single();
-      if (configData) {
-        setSiteConfig({
-          heroTitle: configData.hero_title,
-          heroSubtitle: configData.hero_subtitle,
-          contactEmail: configData.contact_email,
-          contactPhone: configData.contact_phone,
-          address: configData.address,
-          openingHours: configData.opening_hours
-        });
-      }
+      try {
+        // Fetch Products
+        const { data: pData } = await supabase.from('products').select('*');
+        if (pData) {
+          setProducts(pData.map(p => ({
+            id: p.id,
+            name: p.name,
+            description: p.description,
+            price: p.price,
+            category: p.category,
+            condition: p.condition,
+            imageUrl: p.image_url
+          })));
+        }
 
-      // Fetch Quotes
-      const { data: qData } = await supabase.from('quotes').select('*');
-      if (qData) {
-        setQuotes(qData.map(q => ({
-          id: q.id,
-          customerName: q.customer_name,
-          contact: q.contact,
-          deviceType: q.device_type,
-          issueDescription: q.issue_description,
-          status: q.status,
-          date: new Date(q.created_at).toLocaleDateString()
-        })));
-      }
+        // Fetch Config
+        const { data: configData } = await supabase.from('site_config').select('*').single();
+        if (configData) {
+          setSiteConfig({
+            heroTitle: configData.hero_title,
+            heroSubtitle: configData.hero_subtitle,
+            contactEmail: configData.contact_email,
+            contactPhone: configData.contact_phone,
+            address: configData.address,
+            openingHours: configData.opening_hours
+          });
+        }
 
-      // Fetch Invoices
-      const { data: iData } = await supabase.from('invoices').select('*');
-      if (iData) {
-        setInvoices(iData.map(i => ({
-          id: i.id,
-          name: i.name,
-          url: i.url,
-          amount: i.amount,
-          date: new Date(i.date).toLocaleDateString(),
-          fileType: i.file_type
-        })));
+        // Fetch Quotes
+        const { data: qData } = await supabase.from('quotes').select('*');
+        if (qData) {
+          setQuotes(qData.map(q => ({
+            id: q.id,
+            customerName: q.customer_name,
+            contact: q.contact,
+            deviceType: q.device_type,
+            issueDescription: q.issue_description,
+            status: q.status,
+            date: new Date(q.created_at).toLocaleDateString()
+          })));
+        }
+
+        // Fetch Invoices
+        const { data: iData } = await supabase.from('invoices').select('*');
+        if (iData) {
+          setInvoices(iData.map(i => ({
+            id: i.id,
+            name: i.name,
+            url: i.url,
+            amount: i.amount,
+            date: new Date(i.date).toLocaleDateString(),
+            fileType: i.file_type
+          })));
+        }
+      } catch (error) {
+        console.error("Error fetching Supabase data:", error);
       }
     };
     fetchPersistentData();
