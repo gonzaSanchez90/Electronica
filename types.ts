@@ -23,6 +23,15 @@ export interface QuoteRequest {
   status: 'Pendiente' | 'Contactado' | 'Cerrado';
 }
 
+export interface Invoice {
+  id: string;
+  name: string;
+  url: string;
+  amount: number;
+  date: string;
+  fileType: string;
+}
+
 export enum Page {
   HOME = 'home',
   QUOTE = 'quote',
@@ -35,7 +44,8 @@ export enum AdminView {
   DASHBOARD = 'dashboard',
   PRODUCTS = 'products',
   QUOTES = 'quotes',
-  CONTENT = 'content'
+  CONTENT = 'content',
+  BILLING = 'billing'
 }
 
 export interface Message {
