@@ -1,8 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
 
-const apiKey = process.env.API_KEY || '';
-const ai = new GoogleGenAI({ apiKey });
-
 const SYSTEM_INSTRUCTION = `
 Eres el asistente virtual experto de "Electrónica L & G", una tienda de tecnología y reparaciones.
 Tu tono es profesional, técnico pero accesible y amable.
@@ -29,12 +26,15 @@ IMPORTANTE:
 
 export const sendMessageToGemini = async (history: { role: string, parts: { text: string }[] }[], newMessage: string): Promise<string> => {
   try {
+    const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || '';
     if (!apiKey) {
+      console.warn("API Key missing");
       return "Lo siento, el servicio de IA no está configurado correctamente (falta API KEY).";
     }
 
-    const model = 'gemini-3-flash-preview'; 
-    
+    const ai = new GoogleGenAI({ apiKey });
+    const model = 'gemini-1.5-flash';
+
     const chat = ai.chats.create({
       model: model,
       config: {
