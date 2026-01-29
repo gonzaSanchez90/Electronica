@@ -10,7 +10,7 @@ const ShopPage: React.FC<ShopPageProps> = ({ products }) => {
   const newProducts = products.filter(p => p.condition === 'new');
   const refurbishedProducts = products.filter(p => p.condition === 'refurbished');
 
-  const ProductCard = ({ product }: { product: Product }) => (
+  const ProductCard: React.FC<{ product: Product }> = ({ product }) => (
     <div className="bg-slate-800 rounded-2xl overflow-hidden shadow-xl border border-slate-700 hover:border-blue-500/50 transition-all group animate-slide-up h-full flex flex-col">
       <div className="h-64 overflow-hidden relative">
         <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
@@ -41,10 +41,10 @@ const ShopPage: React.FC<ShopPageProps> = ({ products }) => {
       {/* New Products Section */}
       <div className="mb-16">
         <div className="flex items-center gap-3 mb-8">
-           <div className="p-2 bg-blue-600 rounded-lg"><Star className="text-white" size={24} /></div>
-           <h3 className="text-2xl font-bold text-white">Productos Nuevos</h3>
+          <div className="p-2 bg-blue-600 rounded-lg"><Star className="text-white" size={24} /></div>
+          <h3 className="text-2xl font-bold text-white">Productos Nuevos</h3>
         </div>
-        
+
         {newProducts.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {newProducts.map((product) => (
@@ -61,11 +61,11 @@ const ShopPage: React.FC<ShopPageProps> = ({ products }) => {
       {/* Refurbished Products Section */}
       <div>
         <div className="flex items-center gap-3 mb-8">
-           <div className="p-2 bg-green-600 rounded-lg"><RefreshCw className="text-white" size={24} /></div>
-           <div>
-             <h3 className="text-2xl font-bold text-white">Oportunidades Restauradas</h3>
-             <p className="text-sm text-green-400">Stock recuperado - Probado y garantizado</p>
-           </div>
+          <div className="p-2 bg-green-600 rounded-lg"><RefreshCw className="text-white" size={24} /></div>
+          <div>
+            <h3 className="text-2xl font-bold text-white">Oportunidades Restauradas</h3>
+            <p className="text-sm text-green-400">Stock recuperado - Probado y garantizado</p>
+          </div>
         </div>
 
         {refurbishedProducts.length > 0 ? (

@@ -6,20 +6,21 @@ import ShopPage from './components/ShopPage';
 import QuotePage from './components/QuotePage';
 import AdminPanel from './components/AdminPanel';
 import { Menu, X, Wrench, User } from 'lucide-react';
+import { supabase } from './services/supabaseClient';
 import { INITIAL_PRODUCTS, INITIAL_CONFIG, INITIAL_ANALYTICS, INITIAL_LOGS } from './data/constants';
 
 const App: React.FC = () => {
   // Navigation State
   const [currentPage, setCurrentPage] = useState<Page>(Page.HOME);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  
+
   // Data State
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
   const [quotes, setQuotes] = useState<QuoteRequest[]>([]);
   const [siteConfig, setSiteConfig] = useState<SiteConfig>(INITIAL_CONFIG);
   const [analytics, setAnalytics] = useState<AnalyticsStats>(INITIAL_ANALYTICS);
   const [visitorLogs, setVisitorLogs] = useState<VisitorLog[]>(INITIAL_LOGS);
-  
+
   // Auth State - Set to FALSE for production so login is required
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
@@ -42,6 +43,40 @@ const App: React.FC = () => {
     };
     setVisitorLogs(prev => [newLog, ...prev].slice(0, 50)); // Keep last 50 logs
   }, [currentPage]);
+
+  // --- PERSISTENCE: FETCH FROM SUPABASE ---
+  useEffect(() => {
+    const fetchPersistentData = async () => {
+      // Fetch Products
+      const { data: pData } = await supabase.from('products').select('*');
+      if (pData) {
+        setProducts(pData.map(p => ({
+          id: p.id,
+          name: p.name,
+          description: p.description,
+          price: p.price,
+          category: p.category,
+          condition: p.condition,
+          imageUrl: p.image_url
+        })));
+      }
+
+      // Fetch Quotes
+      const { data: qData } = await supabase.from('quotes').select('*');
+      if (qData) {
+        setQuotes(qData.map(q => ({
+          id: q.id,
+          customerName: q.customer_name,
+          contact: q.contact,
+          deviceType: q.device_type,
+          issueDescription: q.issue_description,
+          status: q.status,
+          date: new Date(q.created_at).toLocaleDateString()
+        })));
+      }
+    };
+    fetchPersistentData();
+  }, []);
 
   const navigate = (page: Page) => {
     setCurrentPage(page);
@@ -99,7 +134,7 @@ const App: React.FC = () => {
         {currentPage === Page.SHOP && <ShopPage products={products} />}
         {currentPage === Page.QUOTE && <QuotePage onQuoteSubmit={handleQuoteSubmit} navigate={navigate} />}
         {currentPage === Page.ADMIN && (
-          <AdminPanel 
+          <AdminPanel
             products={products}
             setProducts={setProducts}
             quotes={quotes}
@@ -123,9 +158,9 @@ const App: React.FC = () => {
               <div>
                 <h3 className="text-xl font-bold text-white mb-4 flex items-center justify-center md:justify-start gap-2">
                   <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center transform rotate-3">
-                     <Wrench className="text-white" size={16} />
+                    <Wrench className="text-white" size={16} />
                   </div>
-                   L & G Reparaciones
+                  L & G Reparaciones
                 </h3>
                 <p className="text-gray-500 text-sm leading-relaxed">
                   Comprometidos con la excelencia técnica. Recuperamos la funcionalidad de tus dispositivos más preciados con garantía y profesionalismo.

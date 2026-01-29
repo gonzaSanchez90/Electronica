@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Page, QuoteRequest } from '../types';
 import { CheckCircle } from 'lucide-react';
 import { APPLIANCE_TYPES } from '../data/constants';
+import { supabase } from '../services/supabaseClient';
 
 interface QuotePageProps {
   onQuoteSubmit: (quote: QuoteRequest) => void;
@@ -9,28 +10,42 @@ interface QuotePageProps {
 }
 
 const QuotePage: React.FC<QuotePageProps> = ({ onQuoteSubmit, navigate }) => {
-  const [quoteForm, setQuoteForm] = useState({ 
-    name: '', contact: '', description: '', deviceType: '', customDeviceType: '' 
+  const [quoteForm, setQuoteForm] = useState({
+    name: '', contact: '', description: '', deviceType: '', customDeviceType: ''
   });
   const [submitted, setSubmitted] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!quoteForm.deviceType) {
       alert("Por favor selecciona un tipo de dispositivo.");
       return;
     }
-    
-    // Logic: If 'other' is selected, use the custom text field. Otherwise use the label.
+
     let finalDeviceType = "";
     if (quoteForm.deviceType === 'other') {
-       if (!quoteForm.customDeviceType.trim()) {
-         alert("Por favor especifica qué equipo quieres reparar.");
-         return;
-       }
-       finalDeviceType = quoteForm.customDeviceType;
+      if (!quoteForm.customDeviceType.trim()) {
+        alert("Por favor especifica qué equipo quieres reparar.");
+        return;
+      }
+      finalDeviceType = quoteForm.customDeviceType;
     } else {
-       finalDeviceType = APPLIANCE_TYPES.find(t => t.id === quoteForm.deviceType)?.label || quoteForm.deviceType;
+      finalDeviceType = APPLIANCE_TYPES.find(t => t.id === quoteForm.deviceType)?.label || quoteForm.deviceType;
+    }
+
+    // Save to Supabase
+    const { error } = await supabase.from('quotes').insert([{
+      customer_name: quoteForm.name,
+      contact: quoteForm.contact,
+      device_type: finalDeviceType,
+      issue_description: quoteForm.description,
+      status: 'Pendiente'
+    }]);
+
+    if (error) {
+      console.error("Error saving quote:", error);
+      alert("Hubo un error al enviar tu solicitud. Intenta más tarde.");
+      return;
     }
 
     const newQuote: QuoteRequest = {
@@ -55,10 +70,10 @@ const QuotePage: React.FC<QuotePageProps> = ({ onQuoteSubmit, navigate }) => {
         </div>
         <h2 className="text-3xl font-bold text-white mb-4">¡Solicitud Enviada!</h2>
         <p className="text-gray-300 mb-8 max-w-md mx-auto">
-          Gracias <span className="text-blue-400 font-bold">{quoteForm.name}</span>. Hemos recibido tu consulta. 
+          Gracias <span className="text-blue-400 font-bold">{quoteForm.name}</span>. Hemos recibido tu consulta.
           Nuestros técnicos analizarán el problema de tu <span className="text-white font-bold">{quoteForm.customDeviceType || APPLIANCE_TYPES.find(t => t.id === quoteForm.deviceType)?.label}</span> y te contactarán en <span className="text-blue-400 font-bold">{quoteForm.contact}</span>.
         </p>
-        <button 
+        <button
           onClick={() => {
             setSubmitted(false);
             setQuoteForm({ name: '', contact: '', description: '', deviceType: '', customDeviceType: '' });
@@ -84,14 +99,13 @@ const QuotePage: React.FC<QuotePageProps> = ({ onQuoteSubmit, navigate }) => {
           <label className="block text-white text-sm font-bold mb-4 uppercase tracking-wider text-blue-400">1. ¿Qué deseas reparar?</label>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-4">
             {APPLIANCE_TYPES.map((type) => (
-              <div 
+              <div
                 key={type.id}
-                onClick={() => setQuoteForm({...quoteForm, deviceType: type.id, customDeviceType: ''})}
-                className={`cursor-pointer rounded-xl p-3 border-2 transition-all flex flex-col items-center gap-2 text-center group relative overflow-hidden ${
-                  quoteForm.deviceType === type.id 
-                    ? 'border-blue-500 bg-blue-600/10 scale-105 shadow-xl shadow-blue-500/10' 
+                onClick={() => setQuoteForm({ ...quoteForm, deviceType: type.id, customDeviceType: '' })}
+                className={`cursor-pointer rounded-xl p-3 border-2 transition-all flex flex-col items-center gap-2 text-center group relative overflow-hidden ${quoteForm.deviceType === type.id
+                    ? 'border-blue-500 bg-blue-600/10 scale-105 shadow-xl shadow-blue-500/10'
                     : 'border-slate-700 bg-slate-800 hover:border-slate-500 hover:bg-slate-750'
-                }`}
+                  }`}
               >
                 <div className={`p-3 rounded-full transition-colors z-10 ${quoteForm.deviceType === type.id ? 'bg-blue-500 text-white' : 'bg-slate-700 text-gray-400 group-hover:text-white group-hover:bg-slate-600'}`}>
                   {type.icon}
@@ -111,25 +125,25 @@ const QuotePage: React.FC<QuotePageProps> = ({ onQuoteSubmit, navigate }) => {
           {quoteForm.deviceType === 'other' && (
             <div className="mt-6 animate-fade-in bg-slate-700/30 p-5 rounded-xl border border-slate-600 border-dashed">
               <label className="block text-blue-300 text-sm font-bold mb-2">Escribe el nombre del dispositivo:</label>
-              <input 
+              <input
                 autoFocus
-                type="text" 
+                type="text"
                 placeholder="Ej: Amplificador de guitarra, Máquina de coser, etc..."
                 className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors"
                 value={quoteForm.customDeviceType}
-                onChange={(e) => setQuoteForm({...quoteForm, customDeviceType: e.target.value})}
+                onChange={(e) => setQuoteForm({ ...quoteForm, customDeviceType: e.target.value })}
               />
               <p className="text-xs text-gray-500 mt-2">Nuestros técnicos evaluarán si es posible realizar la reparación.</p>
             </div>
           )}
-          
+
           {/* Helpful context for specific categories */}
           {quoteForm.deviceType === 'kitchen' && (
             <div className="mt-4 text-sm text-gray-400 bg-slate-800/50 p-3 rounded-lg border border-slate-700">
               <span className="text-blue-400 font-bold">Incluye:</span> Microondas, hornos eléctricos, batidoras, licuadoras, cafeteras, tostadoras, etc.
             </div>
           )}
-           {quoteForm.deviceType === 'home' && (
+          {quoteForm.deviceType === 'home' && (
             <div className="mt-4 text-sm text-gray-400 bg-slate-800/50 p-3 rounded-lg border border-slate-700">
               <span className="text-blue-400 font-bold">Incluye:</span> Planchas, aspiradoras, ventiladores (de pie/techo), caloventores, estufas eléctricas, etc.
             </div>
@@ -141,22 +155,22 @@ const QuotePage: React.FC<QuotePageProps> = ({ onQuoteSubmit, navigate }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-gray-400 text-xs font-bold mb-2">NOMBRE COMPLETO</label>
-              <input 
+              <input
                 required
-                type="text" 
+                type="text"
                 value={quoteForm.name}
-                onChange={e => setQuoteForm({...quoteForm, name: e.target.value})}
+                onChange={e => setQuoteForm({ ...quoteForm, name: e.target.value })}
                 className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors placeholder-slate-600"
                 placeholder="Ej: Juan Pérez"
               />
             </div>
             <div>
               <label className="block text-gray-400 text-xs font-bold mb-2">TELÉFONO O EMAIL</label>
-              <input 
+              <input
                 required
-                type="text" 
+                type="text"
                 value={quoteForm.contact}
-                onChange={e => setQuoteForm({...quoteForm, contact: e.target.value})}
+                onChange={e => setQuoteForm({ ...quoteForm, contact: e.target.value })}
                 className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors placeholder-slate-600"
                 placeholder="Ej: 600 123 456"
               />
@@ -166,16 +180,16 @@ const QuotePage: React.FC<QuotePageProps> = ({ onQuoteSubmit, navigate }) => {
 
         <div className="mb-8">
           <label className="block text-white text-sm font-bold mb-4 uppercase tracking-wider text-blue-400">3. El Problema</label>
-          <textarea 
+          <textarea
             required
             value={quoteForm.description}
-            onChange={e => setQuoteForm({...quoteForm, description: e.target.value})}
+            onChange={e => setQuoteForm({ ...quoteForm, description: e.target.value })}
             className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white h-32 focus:outline-none focus:border-blue-500 resize-none transition-colors placeholder-slate-600"
             placeholder="Describe la marca, el modelo y qué falla presenta (ej: No enciende, hace ruido extraño, se cayó...)"
           ></textarea>
         </div>
 
-        <button 
+        <button
           type="submit"
           className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl transition-colors shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2"
         >

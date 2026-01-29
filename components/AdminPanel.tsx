@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Page, Product, QuoteRequest, AdminView, SiteConfig, AnalyticsStats, VisitorLog } from '../types';
 import {
-  User, LayoutDashboard, FileText, ShoppingBag, Settings, Activity, Clock,
+  User, LayoutDashboard, FileText, ShoppingBag, Settings, Activity as ActivityIcon, Clock,
   BarChart3, Plus, Trash2, Upload, Search, CheckCircle, PenTool
 } from 'lucide-react';
+import { supabase } from '../services/supabaseClient';
 
 // --- STABLE SUB-COMPONENTS ---
 // These are defined outside to ensure they have a stable identity across AdminPanel re-renders,
@@ -17,7 +18,7 @@ const DashboardSection: React.FC<{ analytics: AnalyticsStats; visitorLogs: Visit
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-lg relative overflow-hidden group">
         <div className="flex justify-between items-start mb-4 relative z-10">
-          <div className="bg-blue-500/20 p-3 rounded-xl text-blue-400"><Activity size={24} /></div>
+          <div className="bg-blue-500/20 p-3 rounded-xl text-blue-400"><ActivityIcon size={24} /></div>
         </div>
         <div className="text-3xl font-bold text-white mb-1 relative z-10">{analytics.totalVisits}</div>
         <div className="text-gray-400 text-sm relative z-10">Visitas Totales</div>
@@ -257,33 +258,101 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [adminPassword, setAdminPassword] = useState('');
   const [newProduct, setNewProduct] = useState<Partial<Product>>({ category: 'TV', condition: 'refurbished' });
 
-  const handleAddProduct = () => {
+  const handleAddProduct = async () => {
     if (!newProduct.name || !newProduct.price) return;
-    const productToAdd: Product = {
-      id: Date.now().toString(),
+
+    // Save to Supabase
+    const { data, error } = await supabase.from('products').insert([{
       name: newProduct.name,
       description: newProduct.description || '',
       price: Number(newProduct.price),
-      category: newProduct.category as any,
-      condition: newProduct.condition as any || 'refurbished',
-      imageUrl: newProduct.imageUrl || `https://picsum.photos/seed/${Date.now()}/800/600`
+      category: newProduct.category,
+      condition: newProduct.condition || 'refurbished',
+      image_url: newProduct.imageUrl
+    }]).select();
+
+    if (error) {
+      console.error("Error guardando producto:", error);
+      alert("Error al guardar en la base de datos.");
+      return;
+    }
+
+    const savedProduct = data[0];
+    const productToAdd: Product = {
+      id: savedProduct.id,
+      name: savedProduct.name,
+      description: savedProduct.description,
+      price: savedProduct.price,
+      category: savedProduct.category,
+      condition: savedProduct.condition,
+      imageUrl: savedProduct.image_url
     };
+
     setProducts([...products, productToAdd]);
     setNewProduct({ category: 'TV', condition: 'refurbished', name: '', description: '', price: 0, imageUrl: '' });
     alert("Producto agregado correctamente.");
   };
 
-  const handleDeleteProduct = (id: string) => setProducts(products.filter(p => p.id !== id));
-  const handleQuoteStatus = (id: string, status: QuoteRequest['status']) => setQuotes(quotes.map(q => q.id === id ? { ...q, status } : q));
-  const handleDeleteQuote = (id: string) => setQuotes(quotes.filter(q => q.id !== id));
+  const handleDeleteProduct = async (id: string) => {
+    const { error } = await supabase.from('products').delete().eq('id', id);
+    if (!error) {
+      setProducts(products.filter(p => p.id !== id));
+    } else {
+      alert("Error al eliminar producto.");
+    }
+  };
+
+  const handleQuoteStatus = async (id: string, status: QuoteRequest['status']) => {
+    const { error } = await supabase.from('quotes').update({ status }).eq('id', id);
+    if (!error) {
+      setQuotes(quotes.map(q => q.id === id ? { ...q, status } : q));
+    } else {
+      alert("Error al actualizar estado.");
+    }
+  };
+
+  const handleDeleteQuote = async (id: string) => {
+    const { error } = await supabase.from('quotes').delete().eq('id', id);
+    if (!error) {
+      setQuotes(quotes.filter(q => q.id !== id));
+    } else {
+      alert("Error al eliminar solicitud.");
+    }
+  };
   const handleUpdateConfig = (e: React.FormEvent) => { e.preventDefault(); alert("Configuración actualizada."); };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setNewProduct({ ...newProduct, imageUrl: reader.result as string });
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    // Indicamos que está cargando (opcional, podrías añadir un estado local isLoading)
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      // Mientras tanto mostramos la previsualización local
+      setNewProduct({ ...newProduct, imageUrl: reader.result as string });
+    };
+    reader.readAsDataURL(file);
+
+    // Subida REAL a Cloudinary
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
+
+    try {
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`,
+        { method: 'POST', body: formData }
+      );
+      const data = await response.json();
+      if (data.secure_url) {
+        setNewProduct(prev => ({ ...prev, imageUrl: data.secure_url }));
+      } else {
+        console.error("Error en Cloudinary:", data);
+        alert("Error al subir imagen. Verifica el 'Upload Preset'.");
+      }
+    } catch (error) {
+      console.error("Error de red:", error);
+      alert("Error de conexión al subir la imagen.");
     }
   };
 
